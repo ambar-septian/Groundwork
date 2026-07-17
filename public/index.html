@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Groundwork — AI Engineering Textbook</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>▦</text></svg>" />
+</head>
+<body>
+  <a class="skip-link" href="#lesson-pane">Skip to content</a>
+
+  <header class="topbar">
+    <button id="menu-toggle" class="menu-toggle" aria-label="Open table of contents"
+            aria-expanded="false" aria-controls="sidebar">
+      <span aria-hidden="true">☰</span>
+    </button>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">▦</span>
+      <span class="brand-name">Groundwork</span>
+    </div>
+    <div class="overall-progress" id="overall-progress" role="status" aria-live="polite">
+      <div class="overall-progress-track" aria-hidden="true">
+        <div class="overall-progress-fill" id="overall-progress-fill"></div>
+      </div>
+      <span class="overall-progress-label" id="overall-progress-label"></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
+
+    <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+      <div id="toc"><!-- populated by app.js --></div>
+    </nav>
+
+    <main id="lesson-pane" class="lesson-pane" tabindex="-1">
+      <div id="content">
+        <div class="loading">Loading the curriculum…</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
