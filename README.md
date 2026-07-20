@@ -26,6 +26,16 @@ Set `PORT` to change the port; set `DATA_DIR` to store the database somewhere
 else (that's how the deployed version keeps progress on a persistent volume —
 see [DEPLOY.md](DEPLOY.md)).
 
+## Free static edition (GitHub Pages)
+
+`npm run build:static` generates `docs/index.html` — the same app with the
+curriculum inlined and progress stored in the browser's localStorage instead
+of SQLite (no server, so no cross-device sync). Enable it under the repo's
+**Settings → Pages → Deploy from a branch**, pick this branch and the
+`/docs` folder. Re-run the build and commit `docs/` whenever lesson content
+changes. The Node + SQLite deployment in DEPLOY.md remains the full-featured
+version.
+
 ## Layout
 
 ```

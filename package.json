@@ -4,7 +4,8 @@
   "description": "A self-contained textbook web app for becoming an AI Engineer (LLM/agentic focus).",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:static": "node scripts/build-static.js"
   },
   "engines": {
     "node": ">=18"
