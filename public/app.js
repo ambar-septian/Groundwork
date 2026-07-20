@@ -177,6 +177,66 @@
         </figure>`;
     }
     if (block.note) return `<aside class="note">${inline(block.note)}</aside>`;
+    if (block.table) {
+      const head = block.table.head
+        .map((h) => `<th scope="col">${inline(h)}</th>`)
+        .join("");
+      const rows = block.table.rows
+        .map(
+          (r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`
+        )
+        .join("");
+      const caption = block.table.caption
+        ? `<div class="code-caption">${inline(block.table.caption)}</div>`
+        : "";
+      return `
+        <figure class="table-block">
+          <div class="table-wrap">
+            <table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
+          </div>
+          ${caption}
+        </figure>`;
+    }
+    if (block.compare) {
+      const pane = (side) => `
+        <div class="compare-pane">
+          <div class="compare-label">${inline(side.label)}</div>
+          <pre><code>${escapeHtml(side.code)}</code></pre>
+        </div>`;
+      const caption = block.compare.caption
+        ? `<div class="code-caption">${inline(block.compare.caption)}</div>`
+        : "";
+      return `
+        <figure class="compare-block">
+          <div class="compare-grid">
+            ${pane(block.compare.left)}
+            ${pane(block.compare.right)}
+          </div>
+          ${caption}
+        </figure>`;
+    }
+    if (block.flow) {
+      const steps = block.flow.steps
+        .map(
+          (s, i) => `
+            ${i > 0 ? '<div class="flow-arrow" aria-hidden="true">→</div>' : ""}
+            <div class="flow-step">
+              <div class="flow-step-title">${inline(s.t)}</div>
+              ${s.d ? `<div class="flow-step-sub">${inline(s.d)}</div>` : ""}
+            </div>`
+        )
+        .join("");
+      const title = block.flow.title
+        ? `<div class="flow-title">${inline(block.flow.title)}</div>`
+        : "";
+      return `
+        <figure class="flow-block" role="img" aria-label="${escapeHtml(
+          block.flow.title || "Flow diagram"
+        )}">
+          ${title}
+          <div class="flow-steps">${steps}</div>
+        </figure>`;
+    }
     return "";
   }
 

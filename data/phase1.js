@@ -6,6 +6,11 @@
 //   { list: ["...", ...] }             bulleted list; same inline formatting
 //   { code: "...", lang, caption }     code block
 //   { note: "..." }                    callout aside
+//   { table: { head, rows, caption } } comparison table (inline formatting in cells)
+//   { compare: { left: {label, code}, right: {label, code}, caption } }
+//                                      side-by-side code panes (stack on mobile)
+//   { flow: { title, steps: [{ t, d }] } }
+//                                      pipeline diagram: boxes with arrows
 
 module.exports = {
   id: "phase-1",
@@ -28,6 +33,19 @@ module.exports = {
       body: [
         {
           p: "Everything an LLM does — pricing, context limits, latency, even some of its weirder failure modes — is denominated in **tokens**, so this is the right place to start. A token is a chunk of text from a fixed vocabulary, typically 3–4 characters of English on average. The model never sees characters or words; a tokenizer converts your text into a sequence of integer token IDs, the model predicts the next token ID over and over, and a detokenizer turns the result back into text.",
+        },
+        {
+          flow: {
+            title: "From your text to the model and back",
+            steps: [
+              { t: "Your text", d: "\"Summarize Macbeth\"" },
+              { t: "Tokenizer", d: "BPE lookup, fixed vocab" },
+              { t: "Token IDs", d: "[9218, 1040, 553, …]" },
+              { t: "Model", d: "predicts next token ID, repeatedly" },
+              { t: "Detokenizer", d: "IDs back to text" },
+              { t: "Response text", d: "streamed out token by token" },
+            ],
+          },
         },
         {
           p: "Tokenizers are built with an algorithm like byte-pair encoding (BPE): start from raw bytes, repeatedly merge the most frequent adjacent pairs in a training corpus, and stop at a target vocabulary size (typically 50k–200k entries). The practical consequence is that **common strings compress well and rare strings don't**. \"the\" is one token; a UUID might be 20. English is cheap; Indonesian costs somewhat more per word; JSON with deep nesting and long keys is expensive because of all the punctuation and repeated structure.",
@@ -124,12 +142,17 @@ module.exports = {
           p: "Treat the window as a budget with line items. A realistic allocation for a document-Q&A feature on a 200k-token model looks like:",
         },
         {
-          list: [
-            "System prompt & instructions: 1–2k tokens — stable across requests (good for caching).",
-            "Retrieved document chunks: 4–20k tokens — the variable payload.",
-            "Conversation history: capped, e.g. last 10 turns or 8k tokens.",
-            "Reserved for output: whatever you set `max_tokens` to — remember output counts against the same window.",
-          ],
+          table: {
+            caption: "A request budget for document Q&A (200k-token model)",
+            head: ["Line item", "Budget", "Notes"],
+            rows: [
+              ["System prompt & instructions", "1–2k tokens", "stable across requests — good for caching"],
+              ["Retrieved document chunks", "4–20k tokens", "the variable payload (RAG, Phase 2)"],
+              ["Conversation history", "≤ 8k tokens", "capped: e.g. last 10 turns, oldest dropped"],
+              ["Reserved for output", "= `max_tokens`", "output counts against the same window"],
+              ["**Total in flight**", "**~15–30k**", "a fraction of the advertised window — deliberately"],
+            ],
+          },
         },
         {
           p: "Note what that adds up to: even a generous feature uses ~30k tokens, a fraction of the advertised window. That's deliberate. Two things degrade before you hit the hard limit: **cost** (you pay for every input token whether or not it was useful) and **attention quality** — models demonstrably use information at the start and end of the prompt better than information buried in the middle (the \"lost in the middle\" effect, worth knowing even as newer models improve on it). More context is not free and not automatically better; the winning move is usually *selecting* the right 5k tokens, not shipping 150k. That instinct is the entire motivation for RAG in Phase 2.",
@@ -193,6 +216,18 @@ module.exports = {
         },
         {
           p: "Closeness is usually measured with **cosine similarity** — the cosine of the angle between two vectors: 1.0 means identical direction, 0 means unrelated, negative means opposed (rare in practice with modern models). Most embedding APIs return unit-normalized vectors, in which case cosine similarity is just the dot product.",
+        },
+        {
+          flow: {
+            title: "How semantic search uses embeddings",
+            steps: [
+              { t: "Texts", d: "docs + the query" },
+              { t: "Embedding model", d: "cheap, separate from the chat LLM" },
+              { t: "Vectors", d: "[0.02, −0.13, …] × 1536 dims" },
+              { t: "Cosine similarity", d: "dot product on unit vectors" },
+              { t: "Nearest neighbors", d: "top-k most similar texts" },
+            ],
+          },
         },
         { h: "Generating embeddings" },
         {
@@ -260,6 +295,18 @@ module.exports = {
           code: 'import anthropic\n\nclient = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY\n\nresponse = client.messages.create(\n    model="claude-opus-4-8",        # model names change over time — check the docs\n    max_tokens=1024,                 # required: hard cap on output tokens\n    system="You are a senior iOS engineer. Answer concisely with Swift examples.",\n    messages=[\n        {"role": "user", "content": "When should I use an actor instead of a class?"}\n    ],\n)\n\n# The response is structured — content is a LIST of typed blocks, not a string\nfor block in response.content:\n    if block.type == "text":\n        print(block.text)\n\nprint(response.stop_reason)          # "end_turn" | "max_tokens" | "tool_use" | ...\nprint(response.usage.input_tokens, response.usage.output_tokens)',
           lang: "python",
           caption: "The canonical Messages-API call (Anthropic)",
+        },
+        {
+          flow: {
+            title: "Anatomy of one request",
+            steps: [
+              { t: "You assemble", d: "system + messages[] + max_tokens" },
+              { t: "POST /v1/messages", d: "stateless — full history every time" },
+              { t: "Model generates", d: "token by token, up to max_tokens" },
+              { t: "Response", d: "content blocks[]" },
+              { t: "You check", d: "stop_reason, then usage" },
+            ],
+          },
         },
         {
           p: "Three details in that snippet separate production code from tutorial code:",
@@ -343,6 +390,19 @@ module.exports = {
           caption: "Streaming with the Anthropic SDK's high-level helper",
         },
         {
+          flow: {
+            title: "The SSE event lifecycle under the helper",
+            steps: [
+              { t: "message_start", d: "metadata, empty content" },
+              { t: "content_block_start", d: "one per block" },
+              { t: "content_block_delta ×N", d: "the text chunks you render" },
+              { t: "content_block_stop" },
+              { t: "message_delta", d: "final stop_reason + usage" },
+              { t: "message_stop" },
+            ],
+          },
+        },
+        {
           p: "The helper hides an event protocol underneath: `message_start`, then per-block `content_block_start` / `content_block_delta` / `content_block_stop`, then `message_delta` (carrying the final `stop_reason` and usage) and `message_stop`. You care about raw events when you need more than text — tool-call arguments also arrive as deltas, and UIs that render \"thinking\" separately from the answer switch on block type. For plain text, `text_stream` plus `get_final_message()` covers it. The OpenAI SDK's equivalent is `stream=True`, which yields chunks with a `choices[0].delta.content` field.",
         },
         { h: "Engineering realities" },
@@ -417,15 +477,19 @@ module.exports = {
           p: "LLM APIs fail in ways worth memorizing, because the correct reaction differs per class:",
         },
         {
-          list: [
-            "**400 invalid_request** — your bug: malformed messages, budget overflow, unsupported parameter. Never retry; fix the code.",
-            "**401/403 auth & permissions** — key missing, revoked, or unentitled. Never retry; fix configuration.",
-            "**429 rate_limit** — you're over requests- or tokens-per-minute. Retry *with backoff*, honoring the `retry-after` header. Design your concurrency (semaphores from lesson 0.3) so this is rare rather than constant.",
-            "**500 / 529 server & overloaded** — provider-side trouble. Retry with backoff; if persistent, degrade gracefully (queue, fallback model, honest error to the user).",
-            "**Timeouts & dropped connections** — networks being networks; long generations make them likelier. Set explicit client timeouts; prefer streaming for long outputs.",
-            "**Content refusals** — a 200, not an error code: the model declines and `stop_reason` says so. Handle it as a product case, not an exception.",
-            "**Silent quality failures** — also 200s: truncation (`stop_reason == \"max_tokens\"`), wrong-but-confident answers, format drift. Only validation and evals catch these; no status code will.",
-          ],
+          table: {
+            caption: "The failure taxonomy — and the correct reflex for each class",
+            head: ["Failure", "What it means", "Correct reaction"],
+            rows: [
+              ["**400** invalid_request", "your bug: malformed messages, budget overflow, bad parameter", "never retry — fix the code"],
+              ["**401 / 403** auth", "key missing, revoked, or unentitled", "never retry — fix configuration"],
+              ["**429** rate_limit", "over requests- or tokens-per-minute", "retry with backoff, honor `retry-after`; cap concurrency (semaphores, lesson 0.3)"],
+              ["**500 / 529** server, overloaded", "provider-side trouble", "retry with backoff; if persistent, degrade gracefully (queue, fallback, honest error)"],
+              ["Timeouts, dropped connections", "networks being networks; long generations make them likelier", "explicit client timeouts; stream long outputs"],
+              ["Content refusal", "**a 200** — the model declines; `stop_reason` says so", "handle as a product case, not an exception"],
+              ["Silent quality failures", "**also 200s**: truncation (`max_tokens`), wrong-but-confident output, format drift", "validation now (this lesson), evals later (Phase 4) — no status code will save you"],
+            ],
+          },
         },
         { h: "The reliability kit" },
         {

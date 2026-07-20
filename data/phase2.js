@@ -30,10 +30,27 @@ module.exports = {
           p: "RAG splits into an offline and an online half:",
         },
         {
-          list: [
-            "**Ingestion (offline):** collect documents → split them into chunks (lesson 2.3) → embed each chunk (lesson 1.3) → store vectors + text + metadata in an index. Rerun as documents change.",
-            "**Query (online):** embed the user's question → similarity-search the index for top-k chunks (lesson 2.2) → assemble a prompt containing the chunks and the question → generate, with instructions to answer only from the provided context and to cite it.",
-          ],
+          flow: {
+            title: "Ingestion — offline, rerun as documents change",
+            steps: [
+              { t: "Documents", d: "wikis, PDFs, code, tickets" },
+              { t: "Chunk", d: "lesson 2.3" },
+              { t: "Embed", d: "lesson 1.3" },
+              { t: "Index", d: "vectors + text + metadata" },
+            ],
+          },
+        },
+        {
+          flow: {
+            title: "Query — online, per request",
+            steps: [
+              { t: "Question", d: "\"can I get a refund?\"" },
+              { t: "Embed query" },
+              { t: "Top-k search", d: "lesson 2.2" },
+              { t: "Assemble prompt", d: "chunks + question + rules" },
+              { t: "Generate", d: "grounded answer with citations" },
+            ],
+          },
         },
         {
           p: "Everything fancy you'll read about — hybrid search, reranking, query rewriting, agentic RAG — is an upgrade to one of those boxes. Learn the plain pipeline first (lesson 2.4 builds it end-to-end); upgrades then have somewhere to attach.",
@@ -223,6 +240,18 @@ module.exports = {
           p: "Time to assemble the pieces: chunking (2.3) feeds a vector store (2.2) via embeddings (1.3); a retriever pulls context that a Messages-API call (1.4) turns into a grounded answer, validated and error-handled like any API integration (1.6). Deliberately **no framework** — the whole pipeline is ~100 lines of Python, and writing it bare once means LangChain (Phase 3) will read as convenience, not magic.",
         },
         {
+          flow: {
+            title: "answer(question) — what the code below actually does",
+            steps: [
+              { t: "collection.query", d: "top-k chunks + metadata" },
+              { t: "Format context", d: "numbered blocks, [1][2] sources" },
+              { t: "messages.create", d: "system rules + <context> + question" },
+              { t: "Grounded answer", d: "citations, or the refusal phrase" },
+              { t: "Log everything", d: "chunks, scores, usage — debuggability" },
+            ],
+          },
+        },
+        {
           code: 'import anthropic\nimport chromadb\n\n# ── Ingestion (offline) ──────────────────────────────────────────────\nchroma = chromadb.PersistentClient(path="./index")\ncollection = chroma.get_or_create_collection("kb", metadata={"hnsw:space": "cosine"})\n\ndef ingest(docs):\n    """docs: list of {"id": str, "text": str, "source": str}"""\n    for doc in docs:\n        chunks = chunk_markdown(doc["text"])          # lesson 2.3\n        collection.add(\n            ids=[f\'{doc["id"]}:{i}\' for i in range(len(chunks))],\n            documents=[c["text"] for c in chunks],\n            metadatas=[{"source": doc["source"], **c["meta"]} for c in chunks],\n        )\n\n# ── Query (online) ───────────────────────────────────────────────────\nclient = anthropic.Anthropic()\n\nSYSTEM = """You answer questions using ONLY the provided context.\nCite sources inline like [1], [2] matching the context blocks.\nIf the context does not contain the answer, say exactly:\n"I don\'t have enough information in the provided documents." Do not guess."""\n\ndef answer(question, k=4):\n    hits = collection.query(query_texts=[question], n_results=k)\n    chunks = hits["documents"][0]\n    metas = hits["metadatas"][0]\n\n    context = "\\n\\n".join(\n        f\'[{i + 1}] (source: {m["source"]})\\n{text}\'\n        for i, (text, m) in enumerate(zip(chunks, metas))\n    )\n\n    response = client.messages.create(\n        model="claude-opus-4-8",     # model names change over time\n        max_tokens=1024,\n        system=SYSTEM,\n        messages=[{\n            "role": "user",\n            "content": f"<context>\\n{context}\\n</context>\\n\\nQuestion: {question}",\n        }],\n    )\n    text = "".join(b.text for b in response.content if b.type == "text")\n    return {\n        "answer": text,\n        "chunks": chunks,            # keep these — debuggability depends on them\n        "sources": [m["source"] for m in metas],\n        "usage": {\n            "input": response.usage.input_tokens,\n            "output": response.usage.output_tokens,\n        },\n    }',
           lang: "python",
           caption: "A complete RAG pipeline, no framework (chunk_markdown from lesson 2.3)",
@@ -317,6 +346,19 @@ module.exports = {
           code: 'import json\n\ndef evaluate(dataset_path, search, k=5):\n    """dataset: JSONL of {"question": str, "relevant_ids": [chunk_id, ...]}\n    search: callable(query, k) -> list of chunk ids, best first (lesson 2.2/2.4)\n    """\n    rows = [json.loads(line) for line in open(dataset_path)]\n    recall_hits, rr_sum, per_question = 0, 0.0, []\n\n    for row in rows:\n        got = search(row["question"], k)\n        relevant = set(row["relevant_ids"])\n        ranks = [i + 1 for i, cid in enumerate(got) if cid in relevant]\n        hit = bool(ranks)\n        recall_hits += hit\n        rr_sum += 1.0 / ranks[0] if ranks else 0.0\n        per_question.append({"q": row["question"], "hit": hit,\n                             "first_rank": ranks[0] if ranks else None})\n\n    n = len(rows)\n    report = {"recall@k": recall_hits / n, "mrr": rr_sum / n, "n": n}\n    failures = [p for p in per_question if not p["hit"]]\n    return report, failures      # failures are the to-do list, not just a number\n\nreport, failures = evaluate("golden.jsonl", search, k=5)\nprint(report)                    # {"recall@k": 0.84, "mrr": 0.71, "n": 50}\nfor f in failures[:10]:\n    print("MISS:", f["q"])       # read these — patterns will jump out',
           lang: "python",
           caption: "A complete retrieval eval harness — under 30 lines",
+        },
+        {
+          flow: {
+            title: "The eval loop — the habit this lesson exists to install",
+            steps: [
+              { t: "Golden dataset", d: "questions → relevant chunk ids" },
+              { t: "Run the retriever", d: "top-k per question" },
+              { t: "Score", d: "recall@k, MRR" },
+              { t: "Read the failures", d: "clusters, not averages" },
+              { t: "Change one variable", d: "chunking, model, hybrid…" },
+              { t: "Re-run & compare", d: "did the number move? loop again" },
+            ],
+          },
         },
         { h: "Using it like an engineer" },
         {

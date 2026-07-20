@@ -22,13 +22,50 @@ module.exports = {
       ],
       body: [
         {
-          p: "Outline — the full lesson will cover, with side-by-side Swift/Python snippets:",
+          p: "The translation table below is the working core of this lesson — keep it open in a tab for your first weeks of Python. Everything on the left is muscle memory for you; the right column is what your fingers should learn to type instead.",
         },
         {
+          table: {
+            caption: "Swift → Python: the constructs you use daily",
+            head: ["Concept", "Swift", "Python"],
+            rows: [
+              ["Constant / variable", "`let x = 3` / `var y = 4`", "`x = 3` (no keyword; everything rebindable)"],
+              ["Value type", "`struct User { let name: String }`", "`@dataclass` on `class User: name: str`"],
+              ["Optional", "`var s: String?`", "`s: str | None = None`"],
+              ["Unwrapping", "`if let s { use(s) }`", "`if s is not None: use(s)`"],
+              ["Early exit", "`guard let u else { return }`", "`if u is None: return`"],
+              ["Closure", "`{ $0 * 2 }`", "`lambda x: x * 2`"],
+              ["Map / filter", "`items.map { $0.name }`", "`[i.name for i in items]`"],
+              ["Dictionary", "`[String: Int]`", "`dict[str, int]` — the workhorse type of AI code"],
+              ["Interface", "`protocol Fetcher { ... }`", "`class Fetcher(Protocol): ...` or duck typing"],
+              ["Enum w/ values", "`enum Result { case ok(Data) }`", "union types: `Data | ApiError`, or `Enum`"],
+              ["Error handling", "`throws` + `do { } catch { }`", "`raise` + `try: ... except ApiError:`"],
+              ["String interp.", "`\"hi \\(name)\"`", "`f\"hi {name}\"`"],
+              ["Nil", "`nil`", "`None`"],
+              ["Package manifest", "`Package.swift`", "`pyproject.toml`"],
+            ],
+          },
+        },
+        {
+          p: "The mapping you'll lean on most in AI work is `Codable` → **Pydantic**. Pydantic's `BaseModel` is the ecosystem's shared currency — structured LLM output (lesson 1.6), FastAPI request/response schemas, config files — so read this pair until it feels boring:",
+        },
+        {
+          compare: {
+            caption: "The same model, both worlds — Pydantic validates at runtime, which Codable leaves to the decoder",
+            left: {
+              label: "Swift — Codable",
+              code: 'struct BugTriage: Codable {\n    let severity: String\n    let component: String\n    let isRegression: Bool\n}\n\nlet triage = try JSONDecoder()\n    .decode(\n        BugTriage.self,\n        from: data\n    )',
+            },
+            right: {
+              label: "Python — Pydantic",
+              code: 'from pydantic import BaseModel\n\nclass BugTriage(BaseModel):\n    severity: str\n    component: str\n    is_regression: bool\n\ntriage = (\n    BugTriage\n    .model_validate_json(raw)\n)',
+            },
+          },
+        },
+        { p: "Outline — the full lesson will additionally cover:" },
+        {
           list: [
-            "**Core mappings**: `struct`/`class` → `dataclass`; protocols → `Protocol`/duck typing; optionals → `None` + `Optional[T]` hints; `guard let` → early `return`/`if x is None`; closures → lambdas and plain functions; `map`/`filter` → comprehensions (the idiomatic default in Python).",
             "**Type hints**: Python's hints are optional and unenforced at runtime, but the AI ecosystem (Pydantic, FastAPI, LangChain) leans on them heavily — write them like you'd write Swift types.",
-            "**Pydantic in five minutes**: `BaseModel` as the ecosystem's `Codable`. You will see it everywhere — structured LLM output, API schemas, config.",
             "**Gotchas for Swift engineers**: mutable default arguments, everything-is-a-reference semantics, truthiness of empty collections, no access control keywords, exceptions instead of `Result` as the default error channel.",
             "**What to skip**: metaclasses, decorators-beyond-usage, packaging internals. You don't need them to ship AI features.",
           ],
@@ -74,7 +111,28 @@ module.exports = {
         "Write concurrent LLM API calls — the main reason AI code is async at all",
       ],
       body: [
-        { p: "Outline — the full lesson will cover:" },
+        {
+          p: "The direct mapping first — most of Swift Concurrency transfers name-for-name, which makes the differences (below the table) the only part that needs real attention:",
+        },
+        {
+          table: {
+            caption: "Swift Concurrency → asyncio",
+            head: ["Concept", "Swift", "Python (asyncio)"],
+            rows: [
+              ["Async function", "`func fetch() async -> Data`", "`async def fetch():`"],
+              ["Awaiting", "`let d = await fetch()`", "`d = await fetch()`"],
+              ["Parallel pair", "`async let a = f(); async let b = g()`", "`a, b = await asyncio.gather(f(), g())`"],
+              ["Task group", "`withTaskGroup { ... }`", "`async with asyncio.TaskGroup() as tg:`"],
+              ["Fire off a task", "`Task { await work() }`", "`asyncio.create_task(work())`"],
+              ["Sleep", "`try await Task.sleep(for: .seconds(1))`", "`await asyncio.sleep(1)`"],
+              ["Entry point", "`@main` + `async func main()`", "`asyncio.run(main())`"],
+              ["Cancellation", "`task.cancel()` + `Task.checkCancellation()`", "`task.cancel()` + `except asyncio.CancelledError`"],
+              ["Concurrency cap", "manual / `TaskGroup` throttling", "`asyncio.Semaphore(10)`"],
+              ["Data-race safety", "actors + `Sendable` (compiler-checked)", "none — GIL + convention only"],
+            ],
+          },
+        },
+        { p: "Outline — the full lesson will additionally cover:" },
         {
           list: [
             "**The familiar part**: `async def` / `await` reads exactly like Swift. `asyncio.gather` ≈ `async let` + `await` on multiple tasks; `asyncio.TaskGroup` ≈ Swift's `withTaskGroup` (almost name-for-name).",

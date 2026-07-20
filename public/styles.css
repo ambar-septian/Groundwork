@@ -386,6 +386,130 @@ body {
   padding-left: 0.2rem;
 }
 
+/* comparison tables */
+.table-block { margin: 1.4rem 0 1.6rem; }
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-raised);
+}
+.table-block table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.table-block th {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--note-bg);
+  white-space: nowrap;
+}
+.table-block td {
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  min-width: 9rem;
+}
+.table-block tr:last-child td { border-bottom: none; }
+.table-block td code { white-space: pre; }
+
+/* side-by-side code comparison */
+.compare-block { margin: 1.4rem 0 1.6rem; }
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+.compare-pane {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code-bg);
+  overflow: hidden;
+  min-width: 0;
+}
+.compare-label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: 0.45rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--note-bg);
+}
+.compare-pane pre {
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--code-ink);
+}
+.compare-pane pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+@media (max-width: 640px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+
+/* pipeline flow diagrams */
+.flow-block {
+  margin: 1.5rem 0 1.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-raised);
+  padding: 1rem 1.1rem;
+}
+.flow-title {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.75rem;
+}
+.flow-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+.flow-step {
+  flex: 1 1 7.5rem;
+  min-width: 7.5rem;
+  border: 1px solid var(--accent-soft);
+  border-radius: 9px;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg);
+}
+.flow-step-title {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.flow-step-sub {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+.flow-arrow {
+  align-self: center;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  flex: 0 0 auto;
+}
+
 .note {
   border-left: 3px solid var(--accent-soft);
   background: var(--note-bg);
