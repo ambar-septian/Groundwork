@@ -57,8 +57,12 @@ something to publish.
 
 1. <https://render.com> → **New → Web Service** → connect the GitHub repo.
 2. Runtime: Node. Build command: `npm install`. Start command: `npm start`.
-3. Instance type: the free tier works (note: free instances sleep when idle
-   and take ~30s to wake — fine for a personal textbook).
+3. Instance type: the free tier runs the app, **but free instances can't
+   have a persistent disk attached** (Step 3) — so on free, your reading
+   progress resets on every deploy/restart. For durable progress you need
+   the Starter instance (~$7/mo). Free instances also sleep when idle and
+   take ~30s to wake. If you want a truly free start, deploy on free now
+   and add the disk when you upgrade — everything else stays the same.
 
 **Why the build works with `better-sqlite3`:** it's a native module compiled
 during `npm install`. Both platforms run installs on Linux with a toolchain
